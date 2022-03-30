@@ -11,7 +11,7 @@ def check(code_name, data, end_date=None, threshold=30):
     if len(data) < threshold:
         logging.debug("{0}:样本小于{1}天...\n".format(code_name, threshold))
         return
-    data['ma30'] = pd.Series(tl.MA(data['close'].values, 30), index=data.index.values)
+    data['ma30'] = pd.Series(tl.MA(data['close'].values, threshold), index=data.index.values)
 
     begin_date = data.iloc[0].date
     if end_date is not None:

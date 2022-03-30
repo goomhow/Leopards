@@ -22,8 +22,7 @@ def check(code_name, data, end_date=None, threshold=60):
             return False
 
     if end_date is not None:
-        mask = (data['date'] <= end_date)
-        data = data.loc[mask]
+        data = data[:end_date]
 
     data = data.tail(n=threshold)
 

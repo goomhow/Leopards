@@ -88,8 +88,7 @@ def check_volume(code_name, data, end_date=None, threshold=60):
     data['vol_ma5'] = pd.Series(tl.MA(data['volume'].values, 5), index=data.index.values)
 
     if end_date is not None:
-        mask = (data['date'] <= end_date)
-        data = data.loc[mask]
+        data = data[:end_date]
     if data.empty:
         return False
     p_change = data.iloc[-1]['p_change']

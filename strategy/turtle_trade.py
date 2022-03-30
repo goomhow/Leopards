@@ -17,8 +17,7 @@ BALANCE = 200000
 def check_enter(code_name, data, end_date=None, threshold=60):
     max_price = 0
     if end_date is not None:
-        mask = (data['date'] <= end_date)
-        data = data.loc[mask]
+        data = data[:end_date]
     if data is None:
         return False
     data = data.tail(n=threshold)

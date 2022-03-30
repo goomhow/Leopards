@@ -16,8 +16,8 @@ def get_stocks(config=None):
         data = xlrd.open_workbook(config)
         table = data.sheets()[0]
         rows_count = table.nrows
-        codes = table.col_values(0)[1:rows_count-1]
-        names = table.col_values(1)[1:rows_count-1]
+        codes = table.col_values(0)[1:rows_count - 1]
+        names = table.col_values(1)[1:rows_count - 1]
         return list(zip(codes, names))
     else:
         data_files = os.listdir(settings.config['data_dir'])
@@ -42,12 +42,17 @@ def clean_files():
 
 
 # 读取本地数据文件
-def read_data(code_name):
-    stock = code_name[0]
-    name = code_name[1]
+def read_data(code):
+    if isinstance(code, (str, int)):
+        stock = code if code.isdigit() else code[2:]
+    else:
+        stock = code[0]
     file_name = stock + '.h5'
     if os.path.exists(settings.config['data_dir'] + "/" + file_name):
-        return pd.read_hdf(settings.config['data_dir'] + "/" + file_name)
+        df: pd.DataFrame = pd.read_hdf(settings.config['data_dir'] + "/" + file_name)
+        df['day'] = df['date']
+        df.set_index(keys='day', drop=True, inplace=True)
+        return df
     else:
         return
 

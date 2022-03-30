@@ -17,12 +17,13 @@ logging.basicConfig(format='%(asctime)s %(message)s', filename='sequoia.log')
 logging.getLogger().setLevel(logging.INFO)
 settings.init()
 
-if settings.config['cron']:
-    EXEC_TIME = "15:15"
-    schedule.every().day.at(EXEC_TIME).do(job)
+if __name__ == '__main__':
+    if settings.config['cron']:
+        EXEC_TIME = "15:15"
+        schedule.every().day.at(EXEC_TIME).do(job)
 
-    while True:
-        schedule.run_pending()
-        time.sleep(1)
-else:
-    work_flow.process()
+        while True:
+            schedule.run_pending()
+            time.sleep(1)
+    else:
+        work_flow.process()
