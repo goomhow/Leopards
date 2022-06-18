@@ -64,5 +64,6 @@ def run(stocks):
 
 
 if __name__ == '__main__':
-    run([('002435', '长江健康'), ])
+    data = ts.get_k_data('002435')
+    print(data)
 

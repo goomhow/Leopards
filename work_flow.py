@@ -9,6 +9,7 @@ from strategy import breakthrough_platform
 from strategy import parking_apron
 from strategy import low_backtrace_increase
 from strategy import keep_increasing
+from strage_evaluate import load_result
 import tushare as ts
 import push
 import logging
@@ -30,12 +31,15 @@ strategies = {
     '回踩年线': backtrace_ma250.check,
 }
 
+COLUMNS = ['停机坪', '均线多头', '放量上涨', '海龟交易法则', '突破平台', '回踩年线', '无大幅回撤']
+
 
 def process():
     logging.info("************************ process start ***************************************")
     stocks = process_data()
     # process_model(stocks)
     compute(stocks)
+    # max_probability(df)
     logging.info("************************ process   end ***************************************")
 
 
@@ -53,7 +57,8 @@ def process_data(update=True):
         'name': str,
         'nmc': float
     })
-    stocks = [tuple(x) for x in subset.values if str(x[0]).startswith('60') or str(x[0]).startswith('00')]
+    # if str(x[0]).startswith('60') or str(x[0]).startswith('00')
+    stocks = [tuple(x) for x in subset.values]
     if utils.need_update_data() and update:
         utils.prepare()
         data_fetcher.run(stocks)
@@ -84,10 +89,15 @@ def compute(stocks, end_date=None):
     if end_date is None:
         from datetime import datetime
         end_date = datetime.now().strftime('%Y%m%d')
-    df = df[['停机坪', '均线多头', '放量上涨', '海龟交易法则', '突破平台', '回踩年线', '无大幅回撤']]
+    for col in COLUMNS:
+        if col not in df.columns:
+            df[col] = 0
+    df = df[COLUMNS]
     df.fillna(0, inplace=True)
     df['score'] = df.sum(axis=1)
     df.sort_values(by=['score', '停机坪', '均线多头', '放量上涨', '海龟交易法则'], inplace=True, ascending=False)
+    df = add_evaluate(df)
+    max_probability(df)
     df.to_csv(f'result/策略-{end_date}.csv')
     return df
 
@@ -154,12 +164,101 @@ def check_exit():
     file.close()
 
 
+def max_probability(df: pd.DataFrame):
+    def split_strategy(lines: str):
+        x = {}
+        for line in lines.splitlines():
+            k, msg = tuple(line.split(' -> '))
+            if k in x:
+                x[k] = x[k] + '\n' + msg
+            else:
+                x[k] = k + "->" + msg
+        return x
+
+    notice = '''放量上涨-停机坪 -> 总数据条数：69, 持有2天：正盈利概率65%, >=3%盈利概率40%, >=5%盈利概率30%, >=7%盈利概率17%
+    放量上涨-停机坪 -> 总数据条数：69, 持有3天：正盈利概率56%, >=3%盈利概率34%, >=5%盈利概率33%, >=7%盈利概率26%
+    停机坪-回踩年线 -> 总数据条数：21, 持有3天：正盈利概率57%, >=3%盈利概率19%, >=5%盈利概率4%, >=7%盈利概率0%
+    停机坪-回踩年线 -> 总数据条数：21, 持有4天：正盈利概率57%, >=3%盈利概率19%, >=5%盈利概率4%, >=7%盈利概率0%
+    停机坪-无大幅回撤 -> 总数据条数：314, 持有2天：正盈利概率52%, >=3%盈利概率33%, >=5%盈利概率25%, >=7%盈利概率20%
+    停机坪-无大幅回撤 -> 总数据条数：314, 持有3天：正盈利概率53%, >=3%盈利概率36%, >=5%盈利概率29%, >=7%盈利概率22%
+    停机坪-无大幅回撤 -> 总数据条数：314, 持有5天：正盈利概率52%, >=3%盈利概率44%, >=5%盈利概率38%, >=7%盈利概率33%
+    海龟交易法则-放量上涨-停机坪 -> 总数据条数：33, 持有2天：正盈利概率57%, >=3%盈利概率39%, >=5%盈利概率30%, >=7%盈利概率15%
+    海龟交易法则-放量上涨-停机坪 -> 总数据条数：33, 持有3天：正盈利概率51%, >=3%盈利概率36%, >=5%盈利概率33%, >=7%盈利概率21%
+    海龟交易法则-停机坪-无大幅回撤 -> 总数据条数：63, 持有2天：正盈利概率52%, >=3%盈利概率30%, >=5%盈利概率26%, >=7%盈利概率23%
+    海龟交易法则-停机坪-无大幅回撤 -> 总数据条数：63, 持有3天：正盈利概率55%, >=3%盈利概率39%, >=5%盈利概率26%, >=7%盈利概率23%
+    海龟交易法则-停机坪-均线多头 -> 总数据条数：210, 持有2天：正盈利概率52%, >=3%盈利概率36%, >=5%盈利概率28%, >=7%盈利概率23%
+    海龟交易法则-停机坪-均线多头 -> 总数据条数：210, 持有4天：正盈利概率50%, >=3%盈利概率40%, >=5%盈利概率32%, >=7%盈利概率27%
+    放量上涨-突破平台-停机坪 -> 总数据条数：2, 持有2天：正盈利概率50%, >=3%盈利概率0%, >=5%盈利概率0%, >=7%盈利概率0%
+    放量上涨-突破平台-回踩年线 -> 总数据条数：7, 持有2天：正盈利概率57%, >=3%盈利概率42%, >=5%盈利概率14%, >=7%盈利概率0%
+    放量上涨-突破平台-回踩年线 -> 总数据条数：7, 持有3天：正盈利概率85%, >=3%盈利概率28%, >=5%盈利概率14%, >=7%盈利概率0%
+    放量上涨-突破平台-无大幅回撤 -> 总数据条数：19, 持有2天：正盈利概率57%, >=3%盈利概率42%, >=5%盈利概率42%, >=7%盈利概率31%
+    放量上涨-突破平台-无大幅回撤 -> 总数据条数：19, 持有3天：正盈利概率57%, >=3%盈利概率52%, >=5%盈利概率52%, >=7%盈利概率42%
+    放量上涨-突破平台-均线多头 -> 总数据条数：83, 持有2天：正盈利概率53%, >=3%盈利概率33%, >=5%盈利概率27%, >=7%盈利概率18%
+    放量上涨-突破平台-均线多头 -> 总数据条数：83, 持有3天：正盈利概率51%, >=3%盈利概率36%, >=5%盈利概率31%, >=7%盈利概率24%
+    放量上涨-停机坪-均线多头 -> 总数据条数：9, 持有2天：正盈利概率55%, >=3%盈利概率44%, >=5%盈利概率44%, >=7%盈利概率22%
+    突破平台-停机坪-无大幅回撤 -> 总数据条数：27, 持有3天：正盈利概率51%, >=3%盈利概率37%, >=5%盈利概率22%, >=7%盈利概率14%
+    停机坪-回踩年线-均线多头 -> 总数据条数：6, 持有2天：正盈利概率66%, >=3%盈利概率66%, >=5%盈利概率33%, >=7%盈利概率16%
+    停机坪-回踩年线-均线多头 -> 总数据条数：6, 持有3天：正盈利概率66%, >=3%盈利概率33%, >=5%盈利概率0%, >=7%盈利概率0%
+    停机坪-回踩年线-均线多头 -> 总数据条数：6, 持有4天：正盈利概率50%, >=3%盈利概率16%, >=5%盈利概率0%, >=7%盈利概率0%
+    停机坪-无大幅回撤-均线多头 -> 总数据条数：124, 持有2天：正盈利概率50%, >=3%盈利概率30%, >=5%盈利概率24%, >=7%盈利概率20%
+    停机坪-无大幅回撤-均线多头 -> 总数据条数：124, 持有3天：正盈利概率50%, >=3%盈利概率31%, >=5%盈利概率27%, >=7%盈利概率21%
+    回踩年线-无大幅回撤-均线多头 -> 总数据条数：1, 持有5天：正盈利概率100%, >=3%盈利概率0%, >=5%盈利概率0%, >=7%盈利概率0%'''
+    x = split_strategy(notice)
+    for k, v in x.items():
+        if '-' in k:
+            compose = [i.strip() for i in k.split('-')]
+            r = df
+            for s in compose:
+                r = r[r[s] == 1]
+            if r.shape[0] > 0:
+                print('*' * 50)
+                print(v)
+                print(r)
+                r['comment'] = v
+        else:
+            r = df[df[k.strip()] == 1]
+            if r.shape[0] > 0:
+                print('*' * 50)
+                print(v)
+                print(r)
+                r['comment'] = v
+
+
+def add_evaluate(df: pd.DataFrame):
+    df_ = df[COLUMNS]
+    r = load_result()
+
+    def match(row):
+        k = '-'.join(sorted([i for i, j in zip(COLUMNS, row) if j > 0]))
+        if k in r:
+            return r[k]
+        else:
+            return [''] * 5
+
+    d_: pd.Series = df_.apply(match, axis=1)
+    d_ = d_.tolist()
+    df[['1', '2', '3', '4', '5']] = d_
+    return df
+
+
+def config_mns(line: str):
+    a = [i.strip() for i in line.splitlines()]
+    sh = [i for i in a if i.startswith('6')]
+    sz = [i for i in a if i.startswith('0')]
+    print(','.join(sh))
+    print(','.join(sz))
+
+
 if __name__ == '__main__':
     # s = process_data(False)
     # compute(s, end_date='20220329')
-    # d = pd.read_csv('result/策略-20220329.csv')
+    # d = pd.read_csv('result/策略-20220406.csv')
     # d['code'] = d['code'].apply(lambda a: '%06d' % a)
     # d.set_index(keys=['code', 'name'], inplace=True)
+    # max_probability(d)
+    # add_evaluate(d)
+    # print(d)
     # d['score'] = d['score'] / 2
     # d.to_csv(f'result/策略-20220329.csv')
-    print(pd.read_hdf('data/000039.h5'))
+    # print(pd.read_hdf('data/000039.h5'))
+    print(utils.read_data('002435').tail(7).slice_shift(-1))

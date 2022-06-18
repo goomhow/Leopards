@@ -11,7 +11,7 @@ import time
 def job():
     if utils.is_weekday():
         work_flow.process()
-
+        
 
 logging.basicConfig(format='%(asctime)s %(message)s', filename='sequoia.log')
 logging.getLogger().setLevel(logging.INFO)

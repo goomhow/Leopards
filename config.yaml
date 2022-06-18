@@ -1,7 +1,8 @@
 cron: false
-data_dir: "data"
-db_dir: "storage"
-stocks_file: "./storage/stocks.csv"
+work_home: "D:/project/Leopards"
+data_dir: "D:/project/Leopards/data"
+db_dir: "D:/project/Leopards/storage"
+stocks_file: "D:/project/Leopards/storage/stocks.csv"
 
 
 push:

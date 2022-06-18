@@ -1,12 +1,16 @@
+import math
 from http.cookiejar import CookieJar
 
+import numpy as np
 import pandas as pd
 import requests as req
-from strategy.keep_increasing import check as ki_check
 import utils
 import time
 import settings
 import talib as tl
+import pysnowball as ball
+
+ball.set_token('xq_a_token=2feb0afd8a16996036bcd11d5e98c5831a858efc')
 
 settings.init()
 
@@ -50,11 +54,11 @@ def check():
         'xq_is_login': '1',
         's': 'dc11uia7zl',
         'u': '8338841301',
-        'xq_a_token': '01c5b26472260cb6a82187bb3196b2ef06b3f267',
-        'xq_r_token': '4364be70192304440149919b82a4419b66843900',
-        'xqat': '01c5b26472260cb6a82187bb3196b2ef06b3f267',
-        'xq_id_token': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJ1aWQiOjgzMzg4NDEzMDEsImlzcyI6InVjIiwiZXhwIjoxNjUwNjkzNzYwLCJjdG0iOjE2NDg1MzIyNzM3MzgsImNpZCI6ImQ5ZDBuNEFadXAifQ.kK8PggxH0VJdMAWnQJYhLA63VuE6hGYRe2o6D2MxoWWKbjKFaFMyp9ywzwRAbpfOxLKBMx4J7xL0noGxsAJXzUS-mnx83ave-QQ0fESu3LvboyGOZPJey_LrmGwXPbVaHk-obK1E1poS3JvUTvQESZpBS-Q7m_-fZ85Qp0DSwWintJ2fAcG-FFCQNJN7m1C1dA21ykgN3t7NbB42HUPEzE6lfzoIakPiZWMPgyLEyBSQ8qbLu9JGM5UiRNq9VNf8JJ9vjpA3mF_lY99JQNNMDG16XvDa2j2pVG-oSf0MU1I9sXlPgVXlNk0VffVec-MfB58Dg48UmhMYluZAI7K3TQ',
-        'acw_tc': '2760779d16485318957215495e4f03bd2a4adcd84464a4f5a1ce44eb8ec327'
+        'xq_a_token': '2feb0afd8a16996036bcd11d5e98c5831a858efc',
+        # 'xq_r_token': 'ddd08e9a5fd3f343a4199776a68ab1840f229143',
+        # 'xqat': '71695a844e0c7667dc75af541c3aee3407a8ac09',
+        # 'xq_id_token': 'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiJ9.eyJ1aWQiOjgzMzg4NDEzMDEsImlzcyI6InVjIiwiZXhwIjoxNjUyMDc0NjE1LCJjdG0iOjE2NDk0ODMzNTU4ODAsImNpZCI6ImQ5ZDBuNEFadXAifQ.B_tOmn3WHD8FGdtv180jNxuIxIS8wecrKRqU9rcV-jYG6t-_FB2uVDZSmp-0sCyDZynLtDdebS7gT5VYcveyh9lB_2XsgGA8DKjY4ycpjvdlltZKtx31_yRA8UhkDheHsbSKysbpaOXZ5chgudPhXHOEkyRYss16KgUpE4O3JMSleBr7ioxIwzGLFZQYlT-fOaYyrzPnoqOnvcO05PJ8fM14sMoi12sYSkxSXu8BvHlGViRqPrjX6nGMLzku0Wx2dij91gRWxZafVEwsXZu_Tg0TS8THNZBIP0LVNM7tF13DZ5yDDBYLTck8Gy-CUdzaekUAKdct0sYfQYRxmTWhHQ',
+        # 'acw_tc': '2760825d16494831668212914e1615c87ad76072e22d6791f6f032d428a7c2'
     }
     params = dict(
         category='CN', exchange='sh_sz', areacode=None, indcode=None, order_by='symbol', order='desc',
@@ -73,13 +77,49 @@ def check():
         return good_stocks
 
 
+# 持续上涨（MA30向上）
+def ki_check(code_name, data, end_date=None, threshold=30):
+    if len(data) < threshold:
+        print("{0}:样本小于{1}天...\n".format(code_name, threshold))
+        return
+    data['ma30'] = pd.Series(tl.MA(data['close'].values, threshold), index=data.index.values)
+
+    begin_date = data.iloc[0].date
+    if end_date is not None:
+        if end_date < begin_date:  # 该股票在end_date时还未上市
+            print("{}在{}时还未上市".format(code_name, end_date))
+            return False
+
+    if end_date is not None:
+        data = data[:end_date]
+
+    s = data.tail(n=threshold)
+    s = s['ma30']
+
+    if s.shape[0] < threshold:
+        return False
+
+    idx = int(np.floor(threshold * 0.2))
+    tail = s.iloc[-2*idx-1]
+    head = s.iloc[-1]
+    medium = s.iloc[-1*idx-1]
+    return tail < medium < head
+
+
 def keep_increase(code):
     if code.startswith('SZ30'):
         return None
-    data = utils.read_data(code)
-    return ki_check('', data, threshold=5) and ki_check('', data, threshold=10) and ki_check('', data, threshold=20)
+    _data = utils.read_data(code)
+    if _data is None:
+        print(f"{code} 没有找到对应的股票文件")
+        return False
+
+    return ki_check('', _data, threshold=5) and ki_check('', _data, threshold=10) and ki_check('', _data, threshold=20)
 
 
 if __name__ == '__main__':
-    data = check()
-    print(data)
+    while True:
+        print("*"*50)
+        data = check()
+        print(data[data['keep_increase'] == True])
+        time.sleep(30)
