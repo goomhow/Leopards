@@ -58,12 +58,12 @@ def run(stocks):
                 if data is not None:
                     file_name = stock[0] + '.h5'
                     file_path = os.path.join('data', file_name)
-                    data.to_hdf(file_path, 'date', append=append_mode, format='table',encoding='utf8')
+                    data.to_hdf(file_path, 'date', append=append_mode, format='table', encoding='utf8')
             except Exception as exc:
                 print('%s(%r) generated an exception: %s' % (stock[1], stock[0], exc))
 
 
 if __name__ == '__main__':
-    data = ts.get_k_data('002435')
+    data = ts.get_k_data('688560')
     print(data)
 

@@ -58,7 +58,7 @@ def process_data(update=True):
         'nmc': float
     })
     # if str(x[0]).startswith('60') or str(x[0]).startswith('00')
-    stocks = [tuple(x) for x in subset.values]
+    stocks = [tuple(x) for x in subset.values if not str(x[0]).startswith('8')]
     if utils.need_update_data() and update:
         utils.prepare()
         data_fetcher.run(stocks)
