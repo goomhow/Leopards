@@ -34,11 +34,11 @@ strategies = {
 COLUMNS = ['停机坪', '均线多头', '放量上涨', '海龟交易法则', '突破平台', '回踩年线', '无大幅回撤']
 
 
-def process():
+def process(end_date=None):
     logging.info("************************ process start ***************************************")
     stocks = process_data()
     # process_model(stocks)
-    compute(stocks)
+    compute(stocks, end_date)
     # max_probability(df)
     logging.info("************************ process   end ***************************************")
 
@@ -67,19 +67,19 @@ def process_data(update=True):
     return stocks
 
 
-def process_model(stocks):
+def process_model(stocks, end_date):
     if datetime.datetime.now().weekday() == 0:
         strategies['均线多头'] = keep_increasing.check
 
     for strategy, strategy_func in strategies.items():
-        check(stocks, strategy, strategy_func)
+        check(stocks, strategy, strategy_func, end_date)
         time.sleep(2)
 
 
 def compute(stocks, end_date=None):
     df = None
     for strategy, strategy_func in strategies.items():
-        cf = check(stocks, strategy, strategy_func)
+        cf = check(stocks, strategy, strategy_func, end_date)
         if len(cf) > 0:
             if df is None:
                 df = cf
@@ -102,9 +102,8 @@ def compute(stocks, end_date=None):
     return df
 
 
-def check(stocks, strategy, strategy_func):
-    end = None
-    m_filter = check_enter(end_date=end, strategy_fun=strategy_func)
+def check(stocks, strategy, strategy_func, end_date):
+    m_filter = check_enter(end_date=end_date, strategy_fun=strategy_func)
     results = list(filter(m_filter, stocks))
     msg = '**************"{0}"**************\n{1}\n**************"{0}"**************\n'.format(strategy, results)
     print(msg)
@@ -261,4 +260,5 @@ if __name__ == '__main__':
     # d['score'] = d['score'] / 2
     # d.to_csv(f'result/策略-20220329.csv')
     # print(pd.read_hdf('data/000039.h5'))
-    print(utils.read_data('002435').tail(7).slice_shift(-1))
+    import numpy as np
+    process('2022-08-05')

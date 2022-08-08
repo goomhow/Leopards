@@ -241,6 +241,51 @@ def all_three_module_evaluate(start=None, end=None, th=49):
     save_evaluate(evaluate_result)
 
 
+def all_four_module_evaluate(start=None, end=None, th=49):
+    def four_module_evaluate(strategy1, strategy2, strategy3, strategy4):
+        strategy_name = f'{strategy1}-{strategy2}-{strategy3}'
+        f1 = process_result(strategy1)
+        f1 = f1[start:end]
+        f2 = process_result(strategy2)
+        f2 = f2[start:end]
+        f3 = process_result(strategy3)
+        f3 = f3[start:end]
+        f4 = process_result(strategy4)
+        f4 = f4[start:end]
+        df = f1.join(f2, how='inner', lsuffix='_').join(f3, how='inner', lsuffix='__').join(f4, how='inner', lsuffix='___')
+        df = df[['1', '2', '3', '4', '5']]
+        total_size = df.shape[0]
+        if total_size == 0:
+            logging.info(f'{strategy_name} -> 无重合结果')
+            return
+        rt = []
+        for col in ['1', '2', '3', '4', '5']:
+            n0 = int(df[df[col] > 0].shape[0] / total_size * 100)
+            n3 = int(df[df[col] > 3].shape[0] / total_size * 100)
+            n5 = int(df[df[col] > 5].shape[0] / total_size * 100)
+            n7 = int(df[df[col] > 7].shape[0] / total_size * 100)
+            rt.append(' - '.join(['%.2f' % t for t in [n0, n3, n5, n7]]))
+            if max([n0, n3, n5, n7]) > th:
+                logging.info(
+                    f'{strategy_name} -> 总数据条数：{total_size}, 持有{col}天：正盈利概率{n0}%, >=3%盈利概率{n3}%, >=5%盈利概率{n5}%, >=7%盈利概率{n7}%')
+        df['strategy_name'] = strategy_name
+        process_result(strategy_name, df)
+        return rt
+
+    logging.info('*' * 50)
+    keys = list(strategies.keys())
+    evaluate_result = load_result()
+    for i in range(0, len(keys) - 2):
+        for j in range(i + 1, len(keys) - 1):
+            for k in range(j + 1, len(keys)):
+                for l in range(k + 1, len(keys)):
+                    _1, _2, _3, _4 = keys[i], keys[j], keys[k], keys[l]
+                    rate = four_module_evaluate(_1, _2, _3, _4)
+                    key = '-'.join(sorted([_1, _2, _3, _4]))
+                    evaluate_result[key] = rate
+    save_evaluate(evaluate_result)
+
+
 RESULT_FILE = 'evaluate.json'
 
 
@@ -260,7 +305,9 @@ def load_result():
 
 if __name__ == '__main__':
     from work_flow import process_data
+
     process_data(True)
-    all_strategy_evaluate(start='2020-01-01', end='2022-06-17')
-    all_tow_module_evaluate(start='2020-01-01', end='2022-06-17', th=0)
-    all_three_module_evaluate(start='2020-01-01', end='2022-06-17', th=0)
+    all_strategy_evaluate(start='2021-01-01', end='2022-08-03')
+    all_tow_module_evaluate(start='2021-01-01', end='2022-08-03', th=0)
+    all_three_module_evaluate(start='2021-01-01', end='2022-08-03', th=0)
+    all_four_module_evaluate(start='2021-01-01', end='2022-08-03', th=0)
