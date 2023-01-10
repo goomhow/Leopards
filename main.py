@@ -9,9 +9,14 @@ import time
 
 
 def job():
-    if utils.is_weekday():
+    from datetime import datetime
+    weekday = datetime.today().weekday()
+    if weekday < 5:
         work_flow.process()
-        
+    elif weekday == 5:
+        from strage_evaluate import fresh_evaluate
+        fresh_evaluate()
+
 
 logging.basicConfig(format='%(asctime)s %(message)s', filename='sequoia.log')
 logging.getLogger().setLevel(logging.INFO)

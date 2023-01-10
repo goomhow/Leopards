@@ -98,7 +98,7 @@ def compute(stocks, end_date=None):
     df.sort_values(by=['score', '停机坪', '均线多头', '放量上涨', '海龟交易法则'], inplace=True, ascending=False)
     df = add_evaluate(df)
     max_probability(df)
-    df.to_csv(f'result/策略-{end_date}.csv')
+    df.to_csv(f'result/策略-{end_date}.csv', encoding='gbk', float_format='%.2f')
     return df
 
 

@@ -303,6 +303,19 @@ def load_result():
         return json.load(fp)
 
 
+def fresh_evaluate(start='2021-01-01', end=None):
+    if end is None:
+        end = datetime.now().strftime('%Y-%m-%d')
+    work_home = settings.config['work_home']
+    os.system(f'rm -rf {work_home}/result/*-evaluate.csv')
+    from work_flow import process_data
+    process_data(True)
+    all_strategy_evaluate(start=start, end=end)
+    all_tow_module_evaluate(start=start, end=end, th=0)
+    all_three_module_evaluate(start=start, end=end, th=0)
+    all_four_module_evaluate(start=start, end=end, th=0)
+
+
 if __name__ == '__main__':
     from work_flow import process_data
 
